@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Мои расходы</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--danger:#dc2626}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:760px;margin:auto;padding:14px 14px 90px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:25px;margin:8px 0 14px}.month{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;font-size:16px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.card small{color:var(--muted);display:block;margin-bottom:5px}.big{font-size:20px;font-weight:750;overflow-wrap:anywhere}.wide{grid-column:span 3}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.btn{border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:700;background:var(--accent);color:#fff}
+.btn.secondary{background:#111827}.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}.btn.danger{background:#fff;color:var(--danger);border:1px solid #fecaca}
+.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}.panel h2{font-size:18px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{min-width:0}.field.full{grid-column:1/-1}
+label{font-size:13px;color:var(--muted);display:block;margin:0 0 5px}input,select{width:100%;border:1px solid #d1d5db;border-radius:12px;padding:12px;font-size:16px;background:#fff;color:#111827}
+.help{font-size:13px;color:var(--muted);line-height:1.35}.hidden{display:none!important}
+.row{padding:12px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px}.row:first-child{border-top:0}
+.title{font-weight:700}.meta{font-size:13px;color:var(--muted);margin-top:4px}.amount{text-align:right;font-weight:750}.rub{font-size:12px;color:var(--muted);margin-top:3px}
+.tabs{display:flex;gap:7px;overflow:auto;margin:12px 0}.tab{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 12px}.tab.active{background:#111827;color:#fff}
+.barline{display:grid;grid-template-columns:105px 1fr 70px;align-items:center;gap:7px;margin:9px 0;font-size:13px}.barbg{height:10px;background:#eef0f3;border-radius:99px;overflow:hidden}.bar{height:100%;background:#64748b;border-radius:99px}
+.empty{text-align:center;color:var(--muted);padding:20px}.mini-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+@media(max-width:520px){.wrap{padding:10px 10px 80px}.cards{grid-template-columns:1fr 1fr}.wide{grid-column:span 2}.big{font-size:18px}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.actions{grid-template-columns:1fr 1fr}.barline{grid-template-columns:90px 1fr 60px}}
+
+.auth-overlay{position:fixed;inset:0;background:#f5f6f8;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-card{width:min(420px,100%);background:#fff;border:1px solid #dfe3ea;border-radius:18px;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.08)}
+.auth-card h2{margin:0 0 8px}.auth-card p{color:#667085;margin:0 0 18px}
+.auth-card input{width:100%;box-sizing:border-box;margin:6px 0 12px}
+.auth-card button{width:100%}
+.auth-error{color:#b42318;min-height:22px;margin-top:10px;font-size:14px}
+.auth-actions{display:flex;justify-content:flex-end;margin-bottom:10px}
+.logout-btn{border:0;background:transparent;color:#667085;cursor:pointer;font-size:13px;padding:4px 0}
+
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Расходы">
+</head>
+<body>
+
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-card">
+    <h2>Семейные расходы</h2>
+    <p>Войдите в семейный аккаунт, чтобы открыть общую базу.</p>
+    <form id="loginForm" action="javascript:void(0)" novalidate>
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" required placeholder="email@example.com">
+      <label>Пароль</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Пароль">
+      <button id="loginBtn" type="submit" class="primary">Войти</button>
+      <div id="loginError" class="auth-error"></div>
+    </form>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="top"><h1>Семейные расходы</h1><input id="month" class="month" type="month"></div>
+  <div class="panel" style="margin-top:0">
+    <div class="grid">
+      <div class="field"><label>Кто сейчас вносит расходы</label>
+        <select id="currentPerson"><option>Сергей</option><option>Александра</option></select>
+      </div>
+      <div class="field"><label>Показывать расходы</label>
+        <select id="personFilter"><option value="Все">Все</option><option>Сергей</option><option>Александра</option></select>
+      </div>
+    </div>
+    <div class="meta" id="cloudStatus" style="margin-top:8px">Подключение к общей базе…</div>
+    <div class="auth-actions"><button id="logoutBtn" class="logout-btn" type="button">Выйти из аккаунта</button></div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><small>Расходы</small><div class="big" id="sumBRL">R$ 0</div></div>
+    <div class="card"><small>Списано</small><div class="big" id="sumUSD">$0</div></div>
+    <div class="card"><small>В рублях</small><div class="big" id="sumRUB">₽ 0</div></div>
+    <div class="card wide"><small>USD: куплено / остаток / средняя себестоимость</small><div class="big" id="usdStatus">$0 / $0 / — ₽/$</div></div>
+    <div class="card wide"><small>Бюджет выбранного месяца</small><div class="big" id="budgetStatus">Не задан</div><div class="meta" id="budgetMeta"></div></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="showExpense">+ Расход</button>
+    <button class="btn secondary" id="showUsd">+ Купить USD</button>
+    <button class="btn secondary" id="showIncome">+ Доход USD</button>
+  </div>
+  <div class="panel">
+    <h2>Месячный бюджет</h2>
+    <div class="grid">
+      <div class="field"><label>Бюджет в $ для выбранного месяца</label><input id="budgetUSD" inputmode="decimal" placeholder="Например, 2500"></div>
+      <div class="field" style="align-self:end"><button class="btn ghost" id="saveBudget" type="button">Сохранить бюджет</button></div>
+    </div>
+  </div>
+
+  <form id="expenseForm" class="panel hidden">
+    <h2>Новый расход</h2>
+    <div class="grid">
+      <div class="field"><label>Дата</label><input id="eDate" type="date" required></div>
+      <div class="field"><label>Категория</label><select id="eCat"></select></div>
+      <div class="field full"><label>Описание</label><input id="eDesc" placeholder="Например, супермаркет"></div>
+      <div class="field"><label>Сумма в реалах, R$</label><input id="eBRL" inputmode="decimal" placeholder="250,00" required></div>
+      <div class="field"><label>Курс карты: R$ за $1</label><input id="eBRLUSD" inputmode="decimal" placeholder="5,30" required></div>
+      <div class="field full"><label>Курс ₽/$ — только если хотите переопределить</label><input id="eUSDRUB" inputmode="decimal" placeholder="Автоматически из покупок USD"></div>
+    </div>
+    <p class="help">Пример: R$ 530 при курсе 5,30 = $100. Рублёвая стоимость считается по средней себестоимости купленных вами долларов.</p>
+    <div class="mini-actions"><button class="btn" type="submit">Сохранить расход</button><button class="btn ghost cancel" type="button">Отмена</button></div>
+  </form>
+
+  <form id="usdForm" class="panel hidden">
+    <h2>Покупка долларов за рубли</h2>
+    <div class="grid">
+      <div class="field"><label>Дата</label><input id="uDate" type="date" required></div>
+      <div class="field"><label>Куплено, $</label><input id="uUSD" inputmode="decimal" placeholder="1000" required></div>
+      <div class="field"><label>Заплачено, ₽</label><input id="uRUB" inputmode="decimal" placeholder="82000" required></div>
+      <div class="field"><label>Комиссия, ₽</label><input id="uFee" inputmode="decimal" value="0"></div>
+    </div>
+    <p class="help" id="ratePreview">Фактический курс появится здесь.</p>
+    <div class="mini-actions"><button class="btn secondary" type="submit">Сохранить покупку USD</button><button class="btn ghost cancel" type="button">Отмена</button></div>
+  </form>
+
+
+
+  <form id="incomeForm" class="panel hidden">
+    <h2>Новый доход в долларах</h2>
+    <div class="grid">
+      <div class="field"><label>Дата</label><input id="iDate" type="date" required></div>
+      <div class="field"><label>Сумма, $</label><input id="iUSD" inputmode="decimal" placeholder="2000" required></div>
+      <div class="field full"><label>Описание</label><input id="iDesc" placeholder="Например, зарплата за сентябрь"></div>
+    </div>
+    <div class="mini-actions"><button class="btn" type="submit">Сохранить доход</button><button class="btn ghost cancel" type="button">Отмена</button></div>
+  </form>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="history">Расходы</button>
+    <button class="tab" data-tab="chart">Аналитика месяца</button>
+    <button class="tab" data-tab="income">Доходы</button>
+    <button class="tab" data-tab="usd">Покупки USD</button>
+    <button class="tab" data-tab="compare">Сравнение месяцев</button>
+    <button class="tab" data-tab="rate">Курс ₽/$</button>
+  </div>
+
+  <section id="historyPanel" class="panel"><h2>История расходов</h2><div id="history"></div></section>
+  <section id="chartPanel" class="panel hidden">
+    <h2>Все категории за выбранный месяц</h2>
+    <div id="bars"></div>
+    <h3 style="margin-top:22px">Проценты расходов</h3>
+    <div id="percentList"></div>
+  </section>
+  <section id="incomePanel" class="panel hidden"><h2>Доходы в USD</h2><div id="incomeHistory"></div></section>
+  <section id="usdPanel" class="panel hidden"><h2>Покупки USD</h2><div id="usdHistory"></div></section>
+  <section id="comparePanel" class="panel hidden"><h2>Сравнение месяцев</h2><div id="monthCompare"></div></section>
+  <section id="ratePanel" class="panel hidden"><h2>Курс покупки доллара ₽/$</h2><div id="rateChart"></div></section>
+
+  <div class="panel">
+    <h2>Резервная копия</h2>
+    <p class="help">Данные хранятся на этом устройстве в браузере. Экспортируйте копию, если хотите перенести данные или подстраховаться.</p>
+    <div class="mini-actions">
+      <button class="btn ghost" id="exportBtn" type="button">Экспорт JSON</button>
+      <label class="btn ghost" style="display:inline-block;color:#111827">Импорт JSON<input id="importFile" type="file" accept=".json,application/json" style="display:none"></label>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(async()=>{
+const SUPABASE_URL="https://hiifokaqkcbpldxisbry.supabase.co";
+const SUPABASE_KEY="sb_publishable_REnqYqAxLUpN4xCY-xsdNA__79Dbp9V";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const DEVICE_PERSON_KEY="family_finance_person_v1";
+let cats=["Продукты","Жильё","Коммунальные","Транспорт","Ребёнок","Здоровье","Развлечения","Одежда","Другое"];
+let db={usd:[],incomes:[],expenses:[],budgets:{}}; let editingExpense=null, editingUsd=null;
+const $=id=>document.getElementById(id);
+const num=v=>Number(String(v??"").trim().replace(/\s/g,"").replace(",","."));
+const fmt=(v,d=2)=>Number(v||0).toLocaleString("ru-RU",{minimumFractionDigits:d,maximumFractionDigits:d});
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const thisMonth=()=>today().slice(0,7);
+async function load(){
+ try{
+   $("cloudStatus").textContent="Синхронизация…";
+   const [u,i,e,b,c]=await Promise.all([
+     sb.from("usd_purchases").select("*").order("purchase_date",{ascending:true}),
+     sb.from("incomes").select("*").order("income_date",{ascending:true}),
+     sb.from("expenses").select("*").order("expense_date",{ascending:true}),
+     sb.from("budgets").select("*"),
+     sb.from("categories").select("*").order("name",{ascending:true})
+   ]);
+   if(u.error) throw u.error;if(i.error) throw i.error;if(e.error) throw e.error;if(b.error) throw b.error;if(c.error) throw c.error;
+   db.usd=(u.data||[]).map(x=>({id:x.id,date:x.purchase_date,person:x.person,usd:Number(x.usd),rub:Number(x.rub),fee:Number(x.fee_rub)}));
+   db.incomes=(i.data||[]).map(x=>({id:x.id,date:x.income_date,person:x.person,usd:Number(x.usd),description:x.description||""}));
+   db.expenses=(e.data||[]).map(x=>({id:x.id,date:x.expense_date,person:x.person,category:x.category,description:x.description||"",brl:Number(x.brl),brlusd:Number(x.brl_per_usd),usd:Number(x.usd),usdrub:Number(x.rub_per_usd),rub:Number(x.rub)}));
+   db.budgets={};(b.data||[]).forEach(x=>db.budgets[x.month]=Number(x.budget_usd||0));
+   cats=(c.data||[]).map(x=>x.name);
+   refreshCategorySelect();
+   $("cloudStatus").textContent="☁️ Общая база синхронизирована";
+ }catch(err){console.error(err);$("cloudStatus").textContent="⚠️ Нет связи с общей базой: "+(err.message||err)}
+}
+function save(){}
+function avgRate(){let u=0,r=0;db.usd.forEach(x=>{u+=x.usd;r+=x.rub+x.fee});return u? r/u:0}
+function totalBought(){return db.usd.reduce((a,x)=>a+x.usd,0)}
+function totalSpentUSD(){return db.expenses.reduce((a,x)=>a+x.usd,0)}
+function totalIncomeUSD(){return db.incomes.reduce((a,x)=>a+x.usd,0)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+function refreshCategorySelect(){
+  const sel=$("eCat");
+  if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML=cats.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("");
+  if(cats.includes(current)) sel.value=current;
+}
+function renderCategoryManager(){
+  const box=$("categoryManager"); if(!box)return;
+  box.innerHTML=cats.length?cats.map(x=>`<span class="chip">${esc(x)}</span>`).join(" "):'<span class="meta">Категорий пока нет</span>';
+}
+
+function render(){
+ renderCategoryManager();
+ const m=$("month").value, pf=$("personFilter").value;
+ const ex=db.expenses.filter(x=>(!m||x.date.slice(0,7)===m)&&(pf==="Все"||x.person===pf));
+ const brl=ex.reduce((a,x)=>a+x.brl,0), usd=ex.reduce((a,x)=>a+x.usd,0), rub=ex.reduce((a,x)=>a+x.rub,0);
+ $("sumBRL").textContent="R$ "+fmt(brl); $("sumUSD").textContent="$"+fmt(usd); $("sumRUB").textContent="₽ "+fmt(rub,0);
+ const bought=totalBought(), incomeAll=totalIncomeUSD(), bal=bought+incomeAll-totalSpentUSD(), ar=avgRate();
+ $("usdStatus").textContent="$"+fmt(bought+incomeAll)+" / $"+fmt(bal)+" / "+(ar?fmt(ar)+" ₽/$":"— ₽/$");
+ const budget=Number((db.budgets||{})[m]||0);
+ $("budgetUSD").value=budget||"";
+ if(budget>0){const left=budget-usd,pct=Math.min(999,usd/budget*100);$("budgetStatus").textContent="$"+fmt(usd)+" из $"+fmt(budget);$("budgetMeta").textContent=(left>=0?"Осталось $"+fmt(left):"Превышение $"+fmt(-left))+" · использовано "+fmt(pct,0)+"%"}else{$("budgetStatus").textContent="Не задан";$("budgetMeta").textContent=""}
+ const sorted=[...ex].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ $("history").innerHTML=sorted.length?sorted.map(x=>`<div class="row"><div><div class="title">${esc(x.category)}${x.description?" · "+esc(x.description):""}</div><div class="meta">${x.date} · ${esc(x.person||"—")} · R$/$ ${fmt(x.brlusd,4)} · ₽/$ ${fmt(x.usdrub)}</div><button class="tab editExp" data-id="${x.id}" style="margin-top:7px;padding:5px 9px">Изменить</button> <button class="tab delExp" data-id="${x.id}" style="margin-top:7px;padding:5px 9px">Удалить</button></div><div class="amount">R$ ${fmt(x.brl)}<div class="rub">$${fmt(x.usd)} · ₽ ${fmt(x.rub,0)}</div></div></div>`).join(""):'<div class="empty">Пока нет расходов за этот месяц</div>';
+ document.querySelectorAll(".delExp").forEach(b=>b.onclick=async()=>{if(confirm("Удалить расход?")){const {error}=await sb.from("expenses").delete().eq("id",b.dataset.id);if(error)return alert(error.message);await reload()}});
+ const sums={};ex.forEach(x=>sums[x.category]=(sums[x.category]||0)+x.usd); const entries=Object.entries(sums).sort((a,b)=>b[1]-a[1]),max=Math.max(1,...entries.map(x=>x[1]));
+ $("bars").innerHTML=entries.length?entries.map(([c,v])=>`<div class="barline"><span>${esc(c)}</span><div class="barbg"><div class="bar" style="width:${v/max*100}%"></div></div><b>$${fmt(v)}</b></div>`).join(""):'<div class="empty">Нет данных для графика</div>';
+ $("percentList").innerHTML=entries.length?entries.map(([c,v])=>`<div class="row"><div class="title">${esc(c)}</div><div class="amount">${usd?fmt(v/usd*100,1):"0,0"}%</div></div>`).join(""):'<div class="empty">Нет данных</div>';
+ const inc=db.incomes.filter(x=>(!m||x.date.slice(0,7)===m)&&(pf==="Все"||x.person===pf)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ $("incomeHistory").innerHTML=inc.length?inc.map(x=>`<div class="row"><div><div class="title">${x.date} · ${esc(x.person||"—")}</div><div class="meta">${esc(x.description||"Доход")}</div><button class="tab delIncome" data-id="${x.id}" style="margin-top:7px;padding:5px 9px">Удалить</button></div><div class="amount">+$${fmt(x.usd)}</div></div>`).join(""):'<div class="empty">Доходов за этот месяц нет</div>';
+ document.querySelectorAll(".delIncome").forEach(b=>b.onclick=async()=>{if(confirm("Удалить доход?")){const {error}=await sb.from("incomes").delete().eq("id",b.dataset.id);if(error)return alert(error.message);await reload()}});
+ const us=[...db.usd].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ $("usdHistory").innerHTML=us.length?us.map(x=>`<div class="row"><div><div class="title">${x.date} · ${esc(x.person||"—")}</div><div class="meta">₽ ${fmt(x.rub,0)} + комиссия ₽ ${fmt(x.fee,0)}</div><button class="tab editUsd" data-id="${x.id}" style="margin-top:7px;padding:5px 9px">Изменить</button> <button class="tab delUsd" data-id="${x.id}" style="margin-top:7px;padding:5px 9px">Удалить</button></div><div class="amount">$${fmt(x.usd)}<div class="rub">${fmt((x.rub+x.fee)/x.usd)} ₽/$</div></div></div>`).join(""):'<div class="empty">Покупок USD пока нет</div>';
+ document.querySelectorAll(".delUsd").forEach(b=>b.onclick=async()=>{if(confirm("Удалить покупку USD?")){const {error}=await sb.from("usd_purchases").delete().eq("id",b.dataset.id);if(error)return alert(error.message);await reload()}});
+ document.querySelectorAll(".editExp").forEach(b=>b.onclick=()=>editExpense(Number(b.dataset.id)));
+ document.querySelectorAll(".editUsd").forEach(b=>b.onclick=()=>editUsd(Number(b.dataset.id)));
+
+ const monthly={}; db.expenses.forEach(x=>{const mm=x.date.slice(0,7);monthly[mm]=(monthly[mm]||0)+x.brl});
+ const months=Object.keys(monthly).sort(); const mx=Math.max(1,...months.map(mm=>monthly[mm]));
+ $("monthCompare").innerHTML=months.length?months.map(mm=>`<div class="barline"><span>${mm}</span><div class="barbg"><div class="bar" style="width:${monthly[mm]/mx*100}%"></div></div><b>R$ ${fmt(monthly[mm],0)}</b></div>`).join(""):'<div class="empty">Пока недостаточно данных</div>';
+
+ const rates=[...db.usd].sort((a,b)=>a.date.localeCompare(b.date));
+ if(rates.length){
+   const vals=rates.map(x=>(x.rub+x.fee)/x.usd), mn=Math.min(...vals), mxr=Math.max(...vals), range=Math.max(1,mxr-mn);
+   $("rateChart").innerHTML=rates.map((x,i)=>{const r=vals[i],w=20+80*(r-mn)/range;return `<div class="barline"><span>${x.date}</span><div class="barbg"><div class="bar" style="width:${w}%"></div></div><b>${fmt(r)} ₽</b></div>`}).join("")+"<p class='help'>Каждая строка — фактический курс конкретной покупки USD с учётом комиссии.</p>";
+ } else $("rateChart").innerHTML='<div class="empty">Добавьте покупки USD, чтобы увидеть курс</div>';
+}
+$("eCat").innerHTML=cats.map(c=>`<option>${c}</option>`).join(""); $("eDate").value=today();$("uDate").value=today();$("iDate").value=today();$("month").value=thisMonth();
+function show(id){["expenseForm","usdForm","incomeForm"].forEach(x=>$(x).classList.toggle("hidden",x!==id));$(id).scrollIntoView({behavior:"smooth",block:"start"})}
+function editExpense(id){const x=db.expenses.find(v=>v.id===id);if(!x)return;editingExpense=id;$("eDate").value=x.date;$("eCat").value=x.category;$("eDesc").value=x.description||"";$("eBRL").value=x.brl;$("eBRLUSD").value=x.brlusd;$("eUSDRUB").value=x.usdrub;show("expenseForm");$("expenseForm").querySelector('button[type="submit"]').textContent="Сохранить изменения";}
+function editUsd(id){const x=db.usd.find(v=>v.id===id);if(!x)return;editingUsd=id;$("uDate").value=x.date;$("uUSD").value=x.usd;$("uRUB").value=x.rub;$("uFee").value=x.fee||0;preview();show("usdForm");$("usdForm").querySelector('button[type="submit"]').textContent="Сохранить изменения";}
+$("showExpense").onclick=()=>{editingExpense=null;$("expenseForm").reset();$("eDate").value=today();$("eCat").value="Продукты";$("expenseForm").querySelector('button[type="submit"]').textContent="Сохранить расход";show("expenseForm")};
+$("showIncome").onclick=()=>{$("incomeForm").reset();$("iDate").value=today();show("incomeForm")};
+$("showUsd").onclick=()=>{editingUsd=null;$("usdForm").reset();$("uDate").value=today();$("uFee").value="0";$("usdForm").querySelector('button[type="submit"]').textContent="Сохранить покупку USD";show("usdForm")};document.querySelectorAll(".cancel").forEach(b=>b.onclick=()=>b.closest("form").classList.add("hidden"));
+$("expenseForm").onsubmit=async e=>{e.preventDefault();const brl=num($("eBRL").value),brlusd=num($("eBRLUSD").value),manual=num($("eUSDRUB").value),r=manual||avgRate();if(!(brl>0&&brlusd>0))return alert("Проверьте сумму и курс R$/$");if(!(r>0))return alert("Сначала добавьте покупку USD или укажите курс ₽/$ вручную.");const usd=brl/brlusd;const payload={expense_date:$("eDate").value,person:$("currentPerson").value,category:$("eCat").value,description:$("eDesc").value.trim(),brl,brl_per_usd:brlusd,usd,rub_per_usd:r,rub:usd*r};
+let q=editingExpense?sb.from("expenses").update(payload).eq("id",editingExpense):sb.from("expenses").insert(payload);const {error}=await q;if(error)return alert(error.message);editingExpense=null;$("eBRL").value="";$("eDesc").value="";$("eUSDRUB").value="";$("expenseForm").classList.add("hidden");$("expenseForm").querySelector('button[type="submit"]').textContent="Сохранить расход";await reload()};
+$("usdForm").onsubmit=async e=>{e.preventDefault();const usd=num($("uUSD").value),rub=num($("uRUB").value),fee=num($("uFee").value)||0;if(!(usd>0&&rub>=0&&fee>=0))return alert("Проверьте суммы");const payload={purchase_date:$("uDate").value,person:$("currentPerson").value,usd,rub,fee_rub:fee};
+let q=editingUsd?sb.from("usd_purchases").update(payload).eq("id",editingUsd):sb.from("usd_purchases").insert(payload);const {error}=await q;if(error)return alert(error.message);editingUsd=null;$("uUSD").value="";$("uRUB").value="";$("uFee").value="0";$("usdForm").classList.add("hidden");$("usdForm").querySelector('button[type="submit"]').textContent="Сохранить покупку USD";await reload()};
+$("incomeForm").onsubmit=async e=>{e.preventDefault();const usd=num($("iUSD").value);if(!(usd>0))return alert("Проверьте сумму дохода");const payload={income_date:$("iDate").value,person:$("currentPerson").value,usd,description:$("iDesc").value.trim()};const {error}=await sb.from("incomes").insert(payload);if(error)return alert(error.message);$("incomeForm").classList.add("hidden");await reload()};
+function preview(){const u=num($("uUSD").value),r=num($("uRUB").value),f=num($("uFee").value)||0;$("ratePreview").textContent=u>0&&r>=0?"Фактический курс: "+fmt((r+f)/u)+" ₽/$":"Фактический курс появится здесь."}
+["uUSD","uRUB","uFee"].forEach(id=>$(id).addEventListener("input",preview));$("month").onchange=render;$("saveBudget").onclick=async()=>{const m=$("month").value,v=num($("budgetUSD").value);if(!m)return alert("Выберите месяц");if(!(v>=0))return alert("Проверьте бюджет");let res;if(v===0)res=await sb.from("budgets").delete().eq("month",m);else res=await sb.from("budgets").upsert({month:m,budget_usd:v},{onConflict:"month"});if(res.error)return alert(res.error.message);await reload()};
+document.querySelectorAll(".tab[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab[data-tab]").forEach(x=>x.classList.remove("active"));b.classList.add("active");["historyPanel","chartPanel","incomePanel","usdPanel","comparePanel","ratePanel"].forEach(x=>$(x).classList.add("hidden"));$({history:"historyPanel",chart:"chartPanel",income:"incomePanel",usd:"usdPanel",compare:"comparePanel",rate:"ratePanel"}[b.dataset.tab]).classList.remove("hidden")});
+$("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="finance-backup-"+today()+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)};
+$("importFile").onchange=e=>{alert("В облачной версии импорт отключён, чтобы случайно не перезаписать общие семейные данные.");e.target.value="";return;/*const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const x=JSON.parse(rd.result);if(!x.usd||!x.expenses)throw 0;if(!x.budgets)x.budgets={};if(confirm("Заменить текущие данные данными из файла?")){db=x;save();render()}}catch(_){alert("Не удалось прочитать резервную копию")}};rd.readAsText(f)*/};
+
+if($("addCategory")) $("addCategory").onclick=async()=>{
+  const name=$("newCategory").value.trim();
+  if(!name)return alert("Введите название категории");
+  const {error}=await sb.from("categories").insert({name});
+  if(error){
+    if(error.code==="23505") return alert("Такая категория уже есть");
+    return alert(error.message);
+  }
+  $("newCategory").value="";
+  await reload();
+};
+if($("newCategory")) $("newCategory").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("addCategory")?.click()}});
+
+
+const savedPerson=localStorage.getItem(DEVICE_PERSON_KEY);
+if(savedPerson && $("currentPerson")) $("currentPerson").value=savedPerson;
+if($("currentPerson")) $("currentPerson").onchange=()=>localStorage.setItem(DEVICE_PERSON_KEY,$("currentPerson").value);
+if($("personFilter")) $("personFilter").onchange=render;
+
+async function reload(){
+  await load();
+  render();
+}
+
+let realtimeChannel=null;
+
+async function startApp(){
+  try{
+    await reload();
+    $("authOverlay").style.display="none";
+    if(!realtimeChannel){
+      realtimeChannel=sb.channel("family-finance-live")
+        .on("postgres_changes",{event:"*",schema:"public",table:"expenses"},reload)
+        .on("postgres_changes",{event:"*",schema:"public",table:"usd_purchases"},reload)
+        .on("postgres_changes",{event:"*",schema:"public",table:"incomes"},reload)
+        .on("postgres_changes",{event:"*",schema:"public",table:"budgets"},reload)
+        .on("postgres_changes",{event:"*",schema:"public",table:"categories"},reload)
+        .subscribe();
+    }
+  }catch(err){
+    console.error(err);
+    $("loginError").textContent="Вход выполнен, но не удалось загрузить базу: "+(err.message||err);
+    $("authOverlay").style.display="flex";
+  }
+}
+
+function showLogin(){
+  $("authOverlay").style.display="flex";
+  $("loginPassword").value="";
+}
+
+$("loginForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  const email=$("loginEmail").value.trim();
+  const password=$("loginPassword").value;
+  $("loginError").textContent="Проверяем данные…";
+  if(!email || !password){
+    $("loginError").textContent="Введите email и пароль.";
+    return;
+  }
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email,password});
+    if(error) throw error;
+    if(!data.session) throw new Error("Сессия не создана");
+    $("loginError").textContent="Вход выполнен. Загружаем данные…";
+    await startApp();
+  }catch(err){
+    console.error(err);
+    $("loginError").textContent="Ошибка входа: "+(err.message||err);
+  }
+});
+
+$("logoutBtn").onclick=async()=>{
+  await sb.auth.signOut();
+  showLogin();
+};
+
+try{
+  const {data,error}=await sb.auth.getSession();
+  if(error) throw error;
+  if(data.session) await startApp();
+  else showLogin();
+}catch(err){
+  console.error(err);
+  $("loginError").textContent="Ошибка подключения: "+(err.message||err);
+  showLogin();
+}
+
+})();
+</script>
+</body>
+</html>
